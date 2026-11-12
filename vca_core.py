@@ -43,14 +43,24 @@ def fetch_transcript(video_id, languages=("en", "en-US", "en-GB", "en-IN")):
 
 
 def parse_pasted_transcript(text, words_per_minute=150):
-    segs = []
-    pat = re.compile(r"^\s*\[?((?:\d+:)?\d{1,2}:\d{2})\]?\s*[-–]?\s*(.*)$")
+    """Accepts '12:35 some text' lines, or YouTube's copied format where the
+    timestamp is on its own line and the text is on the next line(s)."""
+    ts_pat = re.compile(r"^\s*\[?((?:\d+:)?\d{1,2}:\d{2})\]?\s*[-–]?\s*(.*)$")
+    spoken_pat = re.compile(r"^\s*\d+\s+(?:hours?|minutes?|seconds?)(?:,?\s*\d+\s+(?:hours?|minutes?|seconds?))*\s*$", re.I)
+    segs, cur = [], None
     for line in text.splitlines():
-        m = pat.match(line)
+        line = line.strip()
+        if not line or spoken_pat.match(line):
+            continue
+        m = ts_pat.match(line)
         if m:
             parts = [int(x) for x in m.group(1).split(":")]
             secs = parts[0] * 60 + parts[1] if len(parts) == 2 else parts[0] * 3600 + parts[1] * 60 + parts[2]
-            segs.append({"start": float(secs), "text": m.group(2).strip()})
+            cur = {"start": float(secs), "text": m.group(2).strip()}
+            segs.append(cur)
+        elif cur is not None:
+            cur["text"] = (cur["text"] + " " + line).strip()
+    segs = [s for s in segs if s["text"]]
     if len(segs) >= 3:
         return segs
     sentences = re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
