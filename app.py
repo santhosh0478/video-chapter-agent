@@ -43,7 +43,13 @@ if st.button("Generate", type="primary"):
                 st.session_state.start = 0
                 st.session_state.graded = False
         except Exception as e:
-            st.error(f"Something went wrong: {e}")
+            msg = str(e)
+            if "Could not retrieve a transcript" in msg or "blocking requests" in msg or "IpBlocked" in type(e).__name__ or "RequestBlocked" in type(e).__name__:
+                st.error("YouTube blocked the transcript request from this server (common on cloud hosting). "
+                         "Open the video on YouTube, click **...more → Show transcript**, copy the text, "
+                         "and paste it into the box above.")
+            else:
+                st.error(f"Something went wrong: {msg}")
 
 res = st.session_state.get("result")
 if res:
